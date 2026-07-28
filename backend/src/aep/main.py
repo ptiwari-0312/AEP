@@ -7,12 +7,14 @@ from fastapi import FastAPI
 
 from .core.errors import register_exception_handlers
 from .modules.projects import router as projects_router
+from .modules.task_memory import router as task_memory_router
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AEP", version="0.1.0")
     register_exception_handlers(app)
     app.include_router(projects_router)
+    app.include_router(task_memory_router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

@@ -36,6 +36,11 @@ packages = ["src/aep"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Every module's tests mirror its src/ layout (docs/architecture/02-repo-design.md §2), so
+# same-named files (test_models.py, test_project_repository.py-style siblings) recur across
+# modules. The default "prepend" import mode needs __init__.py in every test directory to
+# disambiguate those; importlib mode doesn't, and is the currently-recommended mode anyway.
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff.lint.per-file-ignores]
 # FastAPI's Depends()/Query() in argument defaults is the framework's documented dependency-
