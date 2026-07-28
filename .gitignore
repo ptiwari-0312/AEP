@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+.vite/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated
+frontend/src/api-client/*
+!frontend/src/api-client/.gitkeep

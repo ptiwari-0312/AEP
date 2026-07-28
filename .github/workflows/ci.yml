@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend-lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend + SDKs (editable)
+        run: |
+          pip install -e ./sdk/aep-provider-sdk -e ./sdk/aep-agent-sdk -e ./sdk/aep-eval-sdk
+          pip install -e ./backend[dev]
+      - name: Lint
+        run: ruff check backend/src backend/tests
+      - name: Unit tests
+        run: pytest backend/tests/unit
+
+  sdk-lint-and-unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [aep-provider-sdk, aep-agent-sdk, aep-eval-sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ./sdk/${{ matrix.package }}[dev]
+      - name: Lint
+        run: ruff check sdk/${{ matrix.package }}/src
+      - name: Test
+        run: pytest sdk/${{ matrix.package }}/tests
+
+  examples-build:
+    runs-on: ubuntu-latest
+    needs: [sdk-lint-and-unit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install SDKs
+        run: |
+          pip install -e ./sdk/aep-provider-sdk -e ./sdk/aep-agent-sdk -e ./sdk/aep-eval-sdk
+      - name: Build examples against current SDK version
+        run: echo "TODO once examples/* have package manifests (repo design §7)"
+
+  frontend-lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run lint
+      - run: npm run build
+
+  integration-tests:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [backend-lint-and-unit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "TODO once backend/tests/integration has real tests + a test DB service (docs/architecture/02-repo-design.md §2)"
