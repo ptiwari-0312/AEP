@@ -1,0 +1,28 @@
+[project]
+name = "aep-example-custom-agent"
+version = "0.1.0"
+description = "Reference DocumentationAgent plugin built against aep-agent-sdk and aep-provider-sdk"
+requires-python = ">=3.11"
+dependencies = [
+    "aep-agent-sdk",
+    "aep-provider-sdk",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "mypy>=1.13",
+    "ruff>=0.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/custom_agent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
