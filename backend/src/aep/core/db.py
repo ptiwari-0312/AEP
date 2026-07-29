@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import (
@@ -22,6 +23,31 @@ from .config import Settings, get_settings
 
 class Base(DeclarativeBase):
     """The declarative base every module's `repository/` models inherit from."""
+
+
+def utcnow() -> datetime:
+    """The shared `created_at`/`updated_at` default every module's models should use, instead
+    of `server_default=func.now()`. On SQLite, `CURRENT_TIMESTAMP` stores "YYYY-MM-DD HH:MM:SS"
+    (no microseconds), but SQLAlchemy's `DateTime` bind processor always formats a
+    Python-supplied datetime WITH microseconds — on SQLite's TEXT-affinity storage that mismatch
+    means `created_at == <python datetime>` silently never matches, which breaks keyset/cursor
+    pagination on any tie (discovered the hard way building the Task Memory module). Using this
+    Python-side default everywhere keeps the stored value and any later comparison on the same
+    formatting path, on every backend, not just Postgres where the native TIMESTAMP type would
+    have papered over it."""
+    return datetime.now(UTC)
+
+
+def ensure_utc(value: datetime) -> datetime:
+    """Normalizes a datetime that may have lost its `tzinfo` on a round trip through SQLite —
+    confirmed empirically: a tz-aware datetime stored via SQLAlchemy's `DateTime` type comes
+    back from SQLite as naive (Postgres's native `TIMESTAMPTZ` round-trips it correctly; this
+    is a SQLite-testing-only gap, not one every backend has). Comparing a DB-round-tripped
+    value directly against a freshly-computed `utcnow()` then raises
+    `TypeError: can't compare offset-naive and offset-aware datetimes`. Every datetime this app
+    produces is UTC by convention (via `utcnow()`), so a naive value is assumed to already be
+    UTC — not the local timezone — rather than silently misinterpreted."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 @lru_cache

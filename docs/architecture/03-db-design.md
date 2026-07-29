@@ -17,10 +17,12 @@
 - Enum-like columns are `VARCHAR` + `CHECK` rather than native Postgres `ENUM` types, so adding a
   new status/type value is a constraint migration, not a type migration — cheaper and safer under
   concurrent deploys.
-- Two tables appear here that the prompt's entity list didn't name explicitly —
-  **`user_roles`** and **`context_package_sources`** — because `User`↔`Role` and
-  `ContextPackage`↔`SourceDocument` are both many-to-many relationships that need a join table to
-  exist at all. They're called out separately in §16.
+- Three tables appear here that the prompt's entity list didn't name explicitly —
+  **`user_roles`**, **`context_package_sources`**, and **`refresh_tokens`** — the first two
+  because `User`↔`Role` and `ContextPackage`↔`SourceDocument` are many-to-many relationships that
+  need a join table to exist at all; the third because implementing the Authentication Service
+  surfaced a real need for one (individually revocable sessions). All three are called out
+  separately in §16.
 
 ## 1. `users`
 
@@ -328,10 +330,16 @@ Dashboard's Evaluations screen can filter/sort by metric.
 **Indexes:** INDEX(`evaluation_id`); INDEX(`metric_name`, `passed`) (drives quality-gate
 aggregation queries). **FKs:** `evaluation_id` → `evaluations(id)` ON DELETE CASCADE. Append-only.
 
-## 16. `user_roles` and `context_package_sources` (implied join tables)
+## 16. `user_roles`, `context_package_sources`, and `refresh_tokens` (implied tables)
 
-Neither was in the prompt's entity list, but both relationships are inherently many-to-many and
-cannot be modeled without a join table:
+None of the three were in the prompt's original entity list. `user_roles` and
+`context_package_sources` are many-to-many join tables that can't be modeled without existing at
+all; `refresh_tokens` is a genuinely new table, added while implementing the Authentication
+Service (backend `modules/auth`) — `POST /auth/logout` (docs/architecture/04-api-design.md §1)
+needs to revoke one specific refresh token, which requires somewhere to revoke it *from*. A
+stateless refresh token (e.g. a long-lived JWT) can't be individually revoked, only left to
+expire — that would make "logout" a UI-only gesture with no actual effect, which defeats the
+point of the endpoint existing.
 
 **`user_roles`** — a user can hold more than one role (e.g. `engineer` + `reviewer`), and a role
 applies to more than one user.
@@ -363,6 +371,27 @@ made the token budget).
 **Indexes:** UNIQUE(`context_package_id`, `source_document_id`); INDEX(`context_package_id`, `rank`).
 `included = false` rows are kept (not deleted) so the ranking algorithm's exclusion decisions are
 themselves auditable/debuggable, per the Context Builder design's "explain ranking" requirement.
+
+**`refresh_tokens`** — one row per issued refresh token, so a specific one can be looked up and
+revoked at logout without invalidating a user's other active sessions (e.g. logging out on one
+device shouldn't sign you out everywhere).
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| user_id | UUID | NOT NULL, FK → `users(id)` ON DELETE CASCADE |
+| token_hash | VARCHAR(64) | NOT NULL, UNIQUE |
+| expires_at | TIMESTAMPTZ | NOT NULL |
+| revoked_at | TIMESTAMPTZ | NULL |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+**Indexes:** UNIQUE(`token_hash`); INDEX(`user_id`).
+**FKs:** `user_id` → `users(id)` ON DELETE CASCADE.
+**Constraints:** only `token_hash` (a SHA-256 digest of the opaque token) is ever stored, never
+the raw token — a leaked database dump must not hand out usable credentials. `revoked_at IS NULL`
+means still valid (subject to `expires_at`); logout sets it rather than deleting the row, so a
+revoked-token reuse attempt (e.g. a stolen token replayed after logout) is distinguishable from a
+token that never existed, which matters for incident investigation.
 
 ## 17. `audit_events`
 

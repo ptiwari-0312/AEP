@@ -30,6 +30,16 @@ class AEPTerminalError(AEPError):
     """A deterministic failure retrying will not resolve."""
 
 
+class UnauthorizedError(AEPTerminalError):
+    """Maps to 401 — missing/invalid/expired credentials. Raised by `core/security.py` rather
+    than FastAPI's raw `HTTPException`, so an auth failure's response body stays RFC 7807
+    shaped like every other error in the API (docs/architecture/04-api-design.md §0.6)."""
+
+
+class ForbiddenError(AEPTerminalError):
+    """Maps to 403 — valid credentials, insufficient role."""
+
+
 class NotFoundError(AEPTerminalError):
     """Maps to 404 — the resource doesn't exist or the caller lacks visibility into it."""
 
@@ -50,6 +60,8 @@ _STATUS_BY_ERROR_TYPE: dict[type[AEPError], int] = {
     ValidationFailedError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ConflictError: status.HTTP_409_CONFLICT,
     NotFoundError: status.HTTP_404_NOT_FOUND,
+    ForbiddenError: status.HTTP_403_FORBIDDEN,
+    UnauthorizedError: status.HTTP_401_UNAUTHORIZED,
 }
 
 

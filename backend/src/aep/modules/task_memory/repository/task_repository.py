@@ -7,8 +7,9 @@ from uuid import UUID
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aep.core.pagination import decode_cursor, encode_cursor
+
 from ..domain.models import Task, TaskStatus, TaskType
-from .cursor import decode_cursor, encode_cursor
 from .models import TaskModel
 
 

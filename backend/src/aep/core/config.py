@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
+    jwt_refresh_token_expire_days: int = 30
+
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
 
     otel_service_name: str = "aep-backend"
     otel_exporter_otlp_endpoint: str | None = None

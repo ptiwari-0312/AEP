@@ -10,9 +10,8 @@ from datetime import datetime
 
 from sqlalchemy import CheckConstraint, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
-from aep.core.db import Base
+from aep.core.db import Base, utcnow
 
 
 class GitRepositoryModel(Base):
@@ -23,8 +22,8 @@ class GitRepositoryModel(Base):
     url: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     default_branch: Mapped[str] = mapped_column(String(255), nullable=False, default="main")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
     __table_args__ = (
         CheckConstraint(
@@ -44,13 +43,18 @@ class ProjectModel(Base):
     git_repository_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("git_repositories.id", ondelete="SET NULL"), nullable=True
     )
-    # No FK to `users.id` yet — the auth module, which owns that table
-    # (docs/architecture/02-repo-design.md §2), doesn't exist in this repo yet. Add
-    # ForeignKey("users.id", ondelete="RESTRICT") once it does (docs/architecture/03-db-design.md §4).
+    # Still no FK to `users.id`, even though the auth module's `users` table exists now: a
+    # cross-module FK means every test that calls Base.metadata.create_all() (including ones
+    # that never touch auth at all) must also import aep.modules.auth.repository.models first,
+    # or SQLAlchemy raises NoReferencedTableError resolving this string reference — a wide,
+    # mechanical ripple across every existing test in both modules. The right fix is a real
+    # Alembic migration (where table creation order is explicit and total), not threading an
+    # import through dozens of test fixtures ahead of that existing. Tracked, not silently
+    # dropped (docs/architecture/03-db-design.md §4).
     owner_user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
     features: Mapped[list[FeatureModel]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
@@ -69,10 +73,10 @@ class FeatureModel(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    # created_by: same FK gap as ProjectModel.owner_user_id above.
+    # created_by: same FK gap as ProjectModel.owner_user_id above, same reason.
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
     project: Mapped[ProjectModel] = relationship(back_populates="features")
 

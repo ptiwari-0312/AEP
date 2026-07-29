@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     CheckConstraint,
@@ -20,18 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from aep.core.db import Base
-
-
-def _utcnow() -> datetime:
-    # A Python-side default, not `server_default=func.now()`: on SQLite, `CURRENT_TIMESTAMP`
-    # stores "YYYY-MM-DD HH:MM:SS" (no microseconds), but SQLAlchemy's DateTime bind processor
-    # always formats a Python-supplied datetime WITH microseconds — on SQLite's TEXT-affinity
-    # column, `created_at == <python datetime>` then silently never matches, which breaks the
-    # cursor-pagination equality branch on any tie (and ties are common: SQLite's
-    # CURRENT_TIMESTAMP has only whole-second resolution). Using the same Python-side default
-    # for both the stored value and later comparisons keeps both paths on the same format.
-    return datetime.now(UTC)
+from aep.core.db import Base, utcnow
 
 _TASK_STATUS_VALUES = (
     "pending",
@@ -69,8 +58,8 @@ class TaskModel(Base):
     # No FK to `agents.id` yet — the (not-yet-built) Agent Orchestrator module owns that table.
     assigned_agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     priority: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
-    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
     __table_args__ = (
         CheckConstraint(_sql_in_clause("status", _TASK_STATUS_VALUES), name="ck_tasks_status"),
@@ -92,7 +81,7 @@ class TaskDependencyModel(Base):
         Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False
     )
     dependency_type: Mapped[str] = mapped_column(String(20), nullable=False, default="blocks")
-    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     __table_args__ = (
         UniqueConstraint("task_id", "depends_on_task_id", name="uq_task_dependencies_edge"),
@@ -113,11 +102,15 @@ class ExecutionHistoryModel(Base):
     )
     from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     to_status: Mapped[str] = mapped_column(String(20), nullable=False)
-    # No FK to users.id/agents.id yet — same gap as TaskModel.assigned_agent_id above.
+    # changed_by_agent_id: no FK yet, same gap as TaskModel.assigned_agent_id above (agents
+    # table doesn't exist). changed_by_user_id: the users table exists now, but see
+    # ProjectModel.owner_user_id's comment in modules/projects/repository/models.py for why the
+    # FK is still deferred (a real Alembic migration, not a mechanical test-fixture-import
+    # ripple, is the right place to add it).
     changed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     changed_by_agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     __table_args__ = (
         CheckConstraint(

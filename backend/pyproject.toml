@@ -28,6 +28,7 @@ dev = [
     "aiosqlite>=0.20",
     "ruff>=0.7",
     "mypy>=1.13",
+    "types-python-jose>=3.3",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -44,8 +45,10 @@ addopts = ["--import-mode=importlib"]
 
 [tool.ruff.lint.per-file-ignores]
 # FastAPI's Depends()/Query() in argument defaults is the framework's documented dependency-
-# injection idiom, not the mutable-default-argument bug B008 exists to catch.
+# injection idiom, not the mutable-default-argument bug B008 exists to catch. core/security.py
+# uses the same idiom for its RBAC dependencies despite not living under an api/ directory.
 "src/aep/**/api/*.py" = ["B008"]
+"src/aep/core/security.py" = ["B008"]
 
 [build-system]
 requires = ["hatchling"]

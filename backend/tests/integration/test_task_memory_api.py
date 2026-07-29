@@ -1,6 +1,9 @@
 """End-to-end test of the Task Memory Service through the real HTTP API, including its call
 into the Project Service module's FeatureService across the module boundary
 (docs/architecture/02-repo-design.md §2: `tests/integration` is "cross-module, real DB").
+
+Authenticates via a fake OAuth provider (dependency-overridden) since these endpoints now
+require a real bearer token — see the identical note in tests/integration/test_projects_api.py.
 """
 
 from __future__ import annotations
@@ -11,6 +14,8 @@ from fastapi.testclient import TestClient
 from aep.core.config import get_settings
 from aep.core.db import Base, get_engine, get_session_factory
 from aep.main import create_app
+from aep.modules.auth.api.dependencies import get_oauth_providers
+from aep.modules.auth.services.oauth import OAuthIdentity
 
 
 @pytest.fixture(autouse=True)
@@ -32,9 +37,20 @@ async def _sqlite_backed_db(tmp_path, monkeypatch):
     get_session_factory.cache_clear()
 
 
+class _FakeOAuthProvider:
+    provider_name = "github"
+
+    async def exchange_code(self, code: str) -> OAuthIdentity:
+        return OAuthIdentity(provider="github", subject="1", email="a@example.com", display_name="A")
+
+
 @pytest.fixture
 def client():
-    with TestClient(create_app()) as test_client:
+    app = create_app()
+    app.dependency_overrides[get_oauth_providers] = lambda: {"github": _FakeOAuthProvider()}
+    with TestClient(app) as test_client:
+        login = test_client.post("/api/v1/auth/login", json={"provider": "github", "code": "c"}).json()
+        test_client.headers.update({"Authorization": f"Bearer {login['access_token']}"})
         yield test_client
 
 

@@ -1,6 +1,12 @@
-"""Opaque keyset-pagination cursor shared by TaskRepository and ExecutionHistoryRepository —
-both are the "high-volume/append-only" category that docs/architecture/04-api-design.md §0.3
-specifies cursor pagination for, as opposed to Project Service's offset pagination.
+"""Opaque keyset-pagination cursor, shared by every module's repositories for the
+"high-volume/append-only" category docs/architecture/04-api-design.md §0.3 specifies cursor
+pagination for (as opposed to offset pagination for small, bounded collections).
+
+Originally lived in `modules/task_memory/repository/cursor.py`; promoted to `core/` once the
+`auth` module's audit-event log needed the identical scheme — a second consumer is the signal
+that a helper belongs in `core/`, not a reason to duplicate it again
+(docs/architecture/02-repo-design.md §2: `core/` is "usable by every module without creating a
+module-to-module coupling").
 
 The cursor encodes `(created_at, id)` of the last row seen; encoding it opaquely (base64) rather
 than exposing raw values keeps callers from depending on the encoding, so it can change later

@@ -19,14 +19,20 @@ Implemented, first full vertical slice of the platform:
 
 ## Known gaps, deliberate
 
-- **No FK from `owner_user_id`/`created_by` to `users.id`.** The `auth` module, which owns
-  that table, doesn't exist yet. Add the constraint once it does
-  (docs/architecture/03-db-design.md §4).
-- **No real authentication.** `api/dependencies.py:get_current_user_id()` returns a fixed
-  placeholder UUID. Request bodies deliberately don't accept an owner/creator field (matching
-  the documented API contract) — replace the dependency with a real JWT-derived one once
-  `core/security.py` and the `auth` module exist; nothing else in this module should need to
-  change.
+- **Real authentication is wired in now** (`aep.core.security.get_current_user_id`, built
+  alongside the `auth` module) — the previous placeholder is gone, and nothing in this module's
+  request/response shapes had to change to make that swap, as planned.
+- **Still no FK from `owner_user_id`/`created_by` to `users.id`**, even though `users` exists
+  now — see the comment on `ProjectModel.owner_user_id` in `repository/models.py` for why: a
+  live cross-module FK means every test in *both* modules that calls
+  `Base.metadata.create_all()` would need to import the `auth` module's models too, just to
+  resolve the reference. A real Alembic migration is the right place for this, not a mechanical
+  import ripple across dozens of test fixtures.
+- **No role enforcement yet** (`POST /projects` should require `engineer`,
+  `POST /projects/{id}/archive` should require `engineer`-owner-or-`admin`, per
+  docs/architecture/04-api-design.md §2). `core/security.py`'s `require_role()` exists and is
+  proven inside the `auth` module's own endpoints; retrofitting it here is a deliberately
+  separate follow-up — see `modules/auth/README.md`.
 - **No Alembic migration yet** — the schema exists only as SQLAlchemy models, exercised via
   `Base.metadata.create_all()` against SQLite in tests. Generating a real migration needs a
   Postgres instance to autogenerate against.

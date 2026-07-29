@@ -36,10 +36,16 @@ module's own `FeatureNotFoundError`, since that exception type is part of
 
 ## Known gaps, deliberate
 
-- **No FK from `feature_id`/`assigned_agent_id`/`changed_by_*` to their owning tables** —
-  `features` (projects module), `agents` and `users` (neither module exists yet).
-- **No real authentication** — same placeholder-`get_current_user_id()` pattern as Project
-  Service, duplicated rather than shared (see the note in `api/dependencies.py` for why).
+- **Real authentication is wired in now** (`aep.core.security.get_current_user_id`) — the
+  previous placeholder is gone.
+- **No FK from `feature_id`/`assigned_agent_id`/`changed_by_agent_id` to their owning tables** —
+  `features` (projects module) and `agents` (Agent Orchestrator module) don't have real FKs for
+  the same cross-module test-fixture-import reason as `changed_by_user_id` below.
+  `changed_by_user_id` could now reference the `auth` module's real `users` table, but doesn't
+  yet — see `modules/projects/README.md`'s identical note on why that's deferred to a real
+  Alembic migration rather than done as a mechanical ripple now.
+- **No role enforcement yet** on this module's endpoints either — see
+  `modules/auth/README.md`'s follow-up note, which covers both modules.
 - **`task-graph:generate` is not implemented** (see above).
 
 ## A real bug found and fixed while building this
