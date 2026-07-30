@@ -176,6 +176,12 @@ class AgentRunService:
         await self._get_task(task_id)
         return await self._agent_runs.list_for_task(task_id, cursor=cursor, limit=limit)
 
+    async def get_latest_run_for_task(self, task_id: UUID) -> AgentRun | None:
+        """`None` if the task has no runs yet — a legitimate state (e.g. before the first run
+        starts), not an error; callers like `evaluation`'s quality-gate treat it as "pending"."""
+        await self._get_task(task_id)
+        return await self._agent_runs.get_latest_for_task(task_id)
+
     async def cancel_run(self, agent_run_id: UUID) -> AgentRun:
         run = await self.get_run(agent_run_id)
         if run.status not in (AgentRunStatus.QUEUED, AgentRunStatus.RUNNING):

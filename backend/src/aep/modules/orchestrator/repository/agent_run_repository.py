@@ -57,6 +57,21 @@ class AgentRunRepository:
         next_cursor = encode_cursor(rows[-1].created_at, rows[-1].id) if has_more and rows else None
         return [_to_domain(m) for m in rows], next_cursor, has_more
 
+    async def get_latest_for_task(self, task_id: UUID) -> AgentRun | None:
+        """The task's most recently created run — what `GET /tasks/{taskId}/quality-gate`
+        (docs/architecture/04-api-design.md §7) aggregates evaluations against. Added while
+        building the `evaluation` module; `list_for_task()`'s ascending cursor order isn't a
+        convenient way to get "the latest one" for a caller that doesn't want pagination."""
+        query = (
+            select(AgentRunModel)
+            .where(AgentRunModel.task_id == task_id)
+            .order_by(AgentRunModel.created_at.desc(), AgentRunModel.id.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(query)
+        model = result.scalar_one_or_none()
+        return _to_domain(model) if model else None
+
     async def update(self, agent_run: AgentRun) -> AgentRun:
         model = await self._session.get(AgentRunModel, agent_run.id)
         if model is None:
