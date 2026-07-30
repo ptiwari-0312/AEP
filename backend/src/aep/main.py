@@ -9,6 +9,7 @@ from .core.errors import register_exception_handlers
 from .modules.auth import router as auth_router
 from .modules.context_builder import router as context_builder_router
 from .modules.evaluation import router as evaluation_router
+from .modules.metrics import router as metrics_router
 from .modules.orchestrator import router as orchestrator_router
 from .modules.projects import router as projects_router
 from .modules.prompt_library import router as prompt_library_router
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(orchestrator_router)
     app.include_router(evaluation_router)
     app.include_router(prompt_library_router)
+    app.include_router(metrics_router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:
