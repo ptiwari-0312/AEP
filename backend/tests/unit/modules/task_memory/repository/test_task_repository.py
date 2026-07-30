@@ -105,3 +105,16 @@ async def test_update_persists_changes(repository: TaskRepository) -> None:
     assert updated.title == "Renamed"
     assert updated.priority == 5
     assert updated.status == TaskStatus.READY
+
+
+async def test_count_by_status_is_global_not_scoped_to_a_feature(repository: TaskRepository) -> None:
+    await repository.add(Task(id=uuid4(), feature_id=uuid4(), title="A", task_type=TaskType.CODE))
+    task_b = await repository.add(
+        Task(id=uuid4(), feature_id=uuid4(), title="B", task_type=TaskType.CODE)
+    )
+    task_b.status = TaskStatus.READY
+    await repository.update(task_b)
+
+    assert await repository.count_by_status(TaskStatus.PENDING) == 1
+    assert await repository.count_by_status(TaskStatus.READY) == 1
+    assert await repository.count_by_status(TaskStatus.MERGED) == 0

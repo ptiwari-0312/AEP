@@ -97,6 +97,13 @@ and `AgentRunService` gained `get_latest_run_for_task()` — needed by the quali
 not previously exposed (`list_runs_for_task()`'s ascending cursor order isn't a convenient way to
 get "the latest one"). See that module's README/docstrings.
 
+## Follow-through on this module, from `dashboard_api`
+
+`EvaluationRepository` gained `list_recent()`, and `EvaluationService` gained
+`list_recent_evaluations()` — a global, newest-first listing across every agent run, needed by
+`dashboard_api`'s overview read-model (`list_for_agent_run()` is scoped to one run, which doesn't
+help "recent evaluations system-wide").
+
 ## Tests
 
 - `tests/unit/modules/evaluation/{domain,repository,services}/` — SQLite-backed, no network.

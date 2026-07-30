@@ -20,7 +20,10 @@ Implemented: second full vertical slice (domain → repository → services → 
   execution-history recording on every transition. `assign_agent()` was added while building the
   `orchestrator` module — its `POST /tasks/{taskId}/assign` (docs/architecture/04-api-design.md
   §5) needed a way to actually set `assigned_agent_id`, which `update_task()` never exposed since
-  assignment isn't this module's own HTTP contract.
+  assignment isn't this module's own HTTP contract. `count_tasks_by_status()` (and
+  `TaskRepository.count_by_status()`) was added while building `dashboard_api` — its overview
+  read-model needs a global "how many tasks are `awaiting_approval`" count across every feature,
+  which `list_tasks_for_feature()` can't give without per-feature scoping.
 - `api/` — all endpoints from docs/architecture/04-api-design.md §3 **except**
   `task-graph:generate`, deliberately: it requires the Agent Orchestrator + a PlannerAgent,
   neither of which exist in `backend/` yet. A stub returning `202` would mislead a caller

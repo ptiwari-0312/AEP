@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aep.core.pagination import decode_cursor, encode_cursor
@@ -71,6 +71,30 @@ class AgentRunRepository:
         result = await self._session.execute(query)
         model = result.scalar_one_or_none()
         return _to_domain(model) if model else None
+
+    async def count_by_statuses(self, statuses: list[AgentRunStatus]) -> int:
+        """Global count across every task — added while building `dashboard_api`, whose overview
+        read-model needs "how many agent runs are running/retrying right now" system-wide, not
+        per-task like `list_for_task()`."""
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(AgentRunModel)
+            .where(AgentRunModel.status.in_([s.value for s in statuses]))
+        )
+        return result.scalar_one()
+
+    async def list_by_statuses(
+        self, statuses: list[AgentRunStatus], *, limit: int = 100
+    ) -> list[AgentRun]:
+        """Global listing across every task — backs `GET /dashboard/running-agents`
+        (docs/architecture/04-api-design.md §11), which is explicitly cross-project."""
+        result = await self._session.execute(
+            select(AgentRunModel)
+            .where(AgentRunModel.status.in_([s.value for s in statuses]))
+            .order_by(AgentRunModel.created_at.desc())
+            .limit(limit)
+        )
+        return [_to_domain(m) for m in result.scalars().all()]
 
     async def update(self, agent_run: AgentRun) -> AgentRun:
         model = await self._session.get(AgentRunModel, agent_run.id)

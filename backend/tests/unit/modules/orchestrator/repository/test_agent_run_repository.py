@@ -128,3 +128,26 @@ async def test_update_persists_status_and_completion_fields(
     assert updated.output_tokens == 20
     assert updated.cost_usd == 0.05
     assert updated.completed_at is not None
+
+
+async def test_count_and_list_by_statuses_are_global_not_scoped_to_a_task(
+    repository: AgentRunRepository, agent_id
+) -> None:
+    running = await repository.add(
+        AgentRun(
+            id=uuid4(), agent_id=agent_id, task_id=uuid4(), provider="claude", model_name="claude-x",
+            status=AgentRunStatus.RUNNING,
+        )
+    )
+    await repository.add(
+        AgentRun(
+            id=uuid4(), agent_id=agent_id, task_id=uuid4(), provider="claude", model_name="claude-x",
+            status=AgentRunStatus.SUCCEEDED,
+        )
+    )
+
+    count = await repository.count_by_statuses([AgentRunStatus.RUNNING, AgentRunStatus.RETRYING])
+    listed = await repository.list_by_statuses([AgentRunStatus.RUNNING, AgentRunStatus.RETRYING])
+
+    assert count == 1
+    assert [r.id for r in listed] == [running.id]

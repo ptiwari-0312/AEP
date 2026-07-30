@@ -182,6 +182,17 @@ class AgentRunService:
         await self._get_task(task_id)
         return await self._agent_runs.get_latest_for_task(task_id)
 
+    async def count_runs_by_statuses(self, statuses: list[AgentRunStatus]) -> int:
+        """Global count, no task scoping — see `AgentRunRepository.count_by_statuses()`'s
+        docstring for why (`dashboard_api`'s overview read-model)."""
+        return await self._agent_runs.count_by_statuses(statuses)
+
+    async def list_runs_by_statuses(
+        self, statuses: list[AgentRunStatus], *, limit: int = 100
+    ) -> list[AgentRun]:
+        """Global listing, no task scoping — backs `dashboard_api`'s running-agents endpoint."""
+        return await self._agent_runs.list_by_statuses(statuses, limit=limit)
+
     async def cancel_run(self, agent_run_id: UUID) -> AgentRun:
         run = await self.get_run(agent_run_id)
         if run.status not in (AgentRunStatus.QUEUED, AgentRunStatus.RUNNING):

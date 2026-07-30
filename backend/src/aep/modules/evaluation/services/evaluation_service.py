@@ -178,6 +178,10 @@ class EvaluationService:
         await self.get_evaluation(evaluation_id)
         return await self._results.list_for_evaluation(evaluation_id)
 
+    async def list_recent_evaluations(self, *, limit: int = 10) -> list[Evaluation]:
+        """Global listing across every agent run — backs `dashboard_api`'s overview endpoint."""
+        return await self._evaluations.list_recent(limit=limit)
+
     async def get_quality_gate(self, task_id: UUID) -> QualityGateResult:
         try:
             latest_run = await self._agent_runs.get_latest_run_for_task(task_id)

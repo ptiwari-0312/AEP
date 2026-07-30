@@ -36,6 +36,15 @@ class EvaluationRepository:
         )
         return [_to_domain(m) for m in result.scalars().all()]
 
+    async def list_recent(self, *, limit: int = 10) -> list[Evaluation]:
+        """Global listing across every agent run, newest first — added while building
+        `dashboard_api`, whose overview read-model needs "recent evaluations" system-wide, not
+        scoped to one run like `list_for_agent_run()`."""
+        result = await self._session.execute(
+            select(EvaluationModel).order_by(EvaluationModel.created_at.desc()).limit(limit)
+        )
+        return [_to_domain(m) for m in result.scalars().all()]
+
 
 def _to_domain(model: EvaluationModel) -> Evaluation:
     return Evaluation(

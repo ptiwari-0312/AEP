@@ -80,3 +80,16 @@ async def test_list_for_agent_run_scopes_and_orders_by_created_at(
     results = await repository.list_for_agent_run(agent_run_id)
 
     assert [e.id for e in results] == [first.id, second.id]
+
+
+async def test_list_recent_is_global_and_newest_first(repository: EvaluationRepository) -> None:
+    first = await repository.add(
+        Evaluation(id=uuid4(), agent_run_id=uuid4(), evaluator_type=EvaluatorType.PERFORMANCE)
+    )
+    second = await repository.add(
+        Evaluation(id=uuid4(), agent_run_id=uuid4(), evaluator_type=EvaluatorType.LLM_JUDGE)
+    )
+
+    recent = await repository.list_recent(limit=10)
+
+    assert [e.id for e in recent] == [second.id, first.id]

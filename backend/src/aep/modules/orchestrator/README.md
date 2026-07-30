@@ -108,6 +108,16 @@ guaranteed to reflect it.
 `assigned_agent_id`, since assignment is this module's HTTP contract
 (`POST /tasks/{taskId}/assign`), not `task_memory`'s own. See that module's README.
 
+## Follow-through on this module, from `evaluation` and `dashboard_api`
+
+`AgentRunRepository`/`AgentRunService` gained `get_latest_for_task()`/`get_latest_run_for_task()`
+while building `evaluation` (its quality-gate endpoint needs "the task's latest run," and
+`list_runs_for_task()`'s ascending cursor order isn't convenient for that), and
+`count_by_statuses()`/`list_by_statuses()` (repository) plus `count_runs_by_statuses()`/
+`list_runs_by_statuses()` (service) while building `dashboard_api` (its overview/running-agents
+read-models need global counts/listings across every task, not scoped to one). See those modules'
+own READMEs.
+
 ## Tests
 
 - `tests/unit/modules/orchestrator/{domain,repository,services}/` — SQLite-backed, no network.

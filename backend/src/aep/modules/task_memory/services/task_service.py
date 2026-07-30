@@ -112,6 +112,11 @@ class TaskService:
             limit=limit,
         )
 
+    async def count_tasks_by_status(self, status: TaskStatus) -> int:
+        """Global count, no feature scoping — see `TaskRepository.count_by_status()`'s
+        docstring for why (`dashboard_api`'s overview read-model)."""
+        return await self._tasks.count_by_status(status)
+
     async def update_task(
         self,
         task_id: UUID,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aep.core.pagination import decode_cursor, encode_cursor
@@ -61,6 +61,15 @@ class TaskRepository:
         rows = rows[:limit]
         next_cursor = encode_cursor(rows[-1].created_at, rows[-1].id) if has_more and rows else None
         return [_to_domain(m) for m in rows], next_cursor, has_more
+
+    async def count_by_status(self, status: TaskStatus) -> int:
+        """Global count, across every feature — not scoped like `list_for_feature()`. Added
+        while building `dashboard_api`, whose overview read-model needs "how many tasks are
+        `awaiting_approval` right now" across the whole system, not per-feature."""
+        result = await self._session.execute(
+            select(func.count()).select_from(TaskModel).where(TaskModel.status == status.value)
+        )
+        return result.scalar_one()
 
     async def update(self, task: Task) -> Task:
         model = await self._session.get(TaskModel, task.id)
