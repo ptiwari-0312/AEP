@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from .core.errors import register_exception_handlers
 from .modules.auth import router as auth_router
 from .modules.context_builder import router as context_builder_router
+from .modules.orchestrator import router as orchestrator_router
 from .modules.projects import router as projects_router
 from .modules.task_memory import router as task_memory_router
 
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(task_memory_router)
     app.include_router(context_builder_router)
+    app.include_router(orchestrator_router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

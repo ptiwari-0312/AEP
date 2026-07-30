@@ -129,6 +129,17 @@ class TaskService:
             task.priority = priority
         return await self._tasks.update(task)
 
+    async def assign_agent(self, task_id: UUID, *, agent_id: UUID | None) -> Task:
+        """Sets/clears `assigned_agent_id` — a separate method from `update_task()` rather than
+        folding it in there, since assignment is the Agent Orchestrator module's concern
+        (docs/architecture/04-api-design.md §5's `POST /tasks/{taskId}/assign`), not this
+        module's own `PATCH /tasks/{taskId}` contract. Confirming `agent_id` refers to a real,
+        enabled agent is the *caller's* job (this module has no visibility into the `agents`
+        table, owned by `orchestrator`) — this method only persists the reference."""
+        task = await self.get_task(task_id)
+        task.assigned_agent_id = agent_id
+        return await self._tasks.update(task)
+
     async def list_dependencies(self, task_id: UUID) -> list[TaskDependency]:
         """Edges where `task_id` is the dependent — what it depends on. Backs the `depends_on`
         field on `TaskResponse` (docs/architecture/04-api-design.md §3)."""

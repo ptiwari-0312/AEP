@@ -279,6 +279,26 @@ class ContextBuilderService:
         ]
         return views, total
 
+    async def assemble_content(self, context_package_id: UUID) -> str:
+        """Builds the actual text bundle a context package's metadata describes — what the
+        Agent Orchestrator needs for `TaskContext.content` (aep_agent_sdk) to actually run an
+        agent. Deliberately *not* persisted (docs/architecture/06-context-builder.md §10 only
+        calls for persisting ranking metadata, not the assembled text itself), so this re-reads
+        each included source's content from disk and re-assembles it on demand, in the same
+        `rank` order `_build_context_package_sources()` already assigned via Assemble's fixed
+        section order (design doc §9) — cheap to recompute since it's just file reads, no
+        re-ranking."""
+        views, _total = await self.list_context_package_sources(
+            context_package_id, included=True, limit=_GATHER_LIST_LIMIT, offset=0
+        )
+        views.sort(key=lambda view: view.rank)
+        sections = []
+        for view in views:
+            content = _read_content(view.uri)
+            if content:
+                sections.append(f"# {view.doc_type.value}: {view.uri}\n{content}")
+        return "\n\n".join(sections)
+
     async def list_source_documents_for_project(
         self,
         project_id: UUID,

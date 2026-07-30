@@ -17,7 +17,10 @@ Implemented: second full vertical slice (domain → repository → services → 
 - `services/` — `TaskService`: the status state machine, the dependency-satisfaction gate
   (only `RUNNING` hard-requires a `blocks` dependency to be `merged` — matching the API design
   doc's own example precisely, not `READY` too), cycle detection for the dependency graph, and
-  execution-history recording on every transition.
+  execution-history recording on every transition. `assign_agent()` was added while building the
+  `orchestrator` module — its `POST /tasks/{taskId}/assign` (docs/architecture/04-api-design.md
+  §5) needed a way to actually set `assigned_agent_id`, which `update_task()` never exposed since
+  assignment isn't this module's own HTTP contract.
 - `api/` — all endpoints from docs/architecture/04-api-design.md §3 **except**
   `task-graph:generate`, deliberately: it requires the Agent Orchestrator + a PlannerAgent,
   neither of which exist in `backend/` yet. A stub returning `202` would mislead a caller
